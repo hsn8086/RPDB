@@ -59,12 +59,14 @@ class RPDB:
         self.dbs = {}
         self.slice_multiplier = slice_multiplier
         self.set_list = []
+        if os.path.exists(self.path):
+            os.makedirs(self.path)
         if os.path.exists(os.path.join(self.path, 'all.keys')):
             self.keys = set(json.load(open(os.path.join(self.path, 'all.keys'), 'r', encoding='utf8'))['keys'])
         else:
             self.keys = set([])
 
-        threading.Thread(target=self._recycle_thread, daemon=False)
+        threading.Thread(target=self._recycle_thread, daemon=True).start()
 
     def _recycle_thread(self):
         while True:
@@ -72,7 +74,7 @@ class RPDB:
             del_list = []
             for key in self.dbs:
                 self._save_slice(key)
-                self.dbs[key]['vitality_value'] -= 6
+                self.dbs[key]['vitality_value'] -= len(self.dbs) / 2 + 1
                 if self.dbs[key]['vitality_value'] <= 0:
                     del_list.append(key)
 
