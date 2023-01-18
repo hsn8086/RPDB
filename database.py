@@ -59,6 +59,8 @@ class RPDB:
         self.dbs = {}
         self.slice_multiplier = slice_multiplier
         self.set_list = []
+        self.lock = threading.Lock()
+
         if not os.path.exists(path):
             os.makedirs(path)
         if os.path.exists(os.path.join(self.path, 'all.keys')):
@@ -142,6 +144,36 @@ class RPDB:
 
     def close(self):
         self.dump()
+
+    def __del__(self):
+        self.close()
+
+    def with_get(self, key):
+        return self._with_get(self, key)
+
+    class _with_get:
+        def __init__(self, db, key):
+            self.lock = db.lock
+            self.db = db
+            self.key = key
+
+        class V:
+            def __init__(self, v=None):
+                self.value = v
+
+        def __enter__(self):
+            self.lock.acquire()
+            self.v = self.V(None)
+            if not db.exists(self.key):
+                return self.v
+            else:
+                self.v.value = self.db.get(self.key)
+                return self.v
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.db.set(self.key, self.v.value)
+            self.lock.release()
+            self.db.dump()
 
 
 def otn(path, new_path, slice_multiplier=1):
