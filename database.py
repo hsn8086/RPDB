@@ -163,7 +163,7 @@ class RPDB:
 
         def __enter__(self):
             self.lock.acquire()
-            self.v = self.V(None)
+            self.v = self.V()
             if not self.db.exists(self.key):
                 return self.v
             else:
@@ -171,7 +171,11 @@ class RPDB:
                 return self.v
 
         def __exit__(self, exc_type, exc_val, exc_tb):
-            self.db.set(self.key, self.v.value)
+            if self.v.value is not None:
+                self.db.set(self.key, self.v.value)
+            elif self.db.exists(self.key):
+                self.db.rem(self.key)
+
             self.lock.release()
             self.db.dump()
 
