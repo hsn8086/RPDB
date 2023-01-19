@@ -148,7 +148,7 @@ class RPDB:
     def __del__(self):
         self.close()
 
-    def with_get(self, key):
+    def enter(self, key):
         return self._with_get(self, key)
 
     class _with_get:
@@ -164,7 +164,7 @@ class RPDB:
         def __enter__(self):
             self.lock.acquire()
             self.v = self.V(None)
-            if not db.exists(self.key):
+            if not self.db.exists(self.key):
                 return self.v
             else:
                 self.v.value = self.db.get(self.key)
