@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='RP-DataBase',
@@ -8,5 +8,5 @@ setup(
     license='MIT license',
     author='hsn8086',
     author_email='hsn1919810@gmail.com',
-    description=''
+    description='a database'
 )
