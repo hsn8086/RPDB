@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name='RP-DataBase',
     version='1.0.1',
-    packages=[''],
+    packages=['RPDB'],
     url='https://github.com/hsn8086/RPDB',
     license='MIT license',
     author='hsn8086',
