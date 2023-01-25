@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(
-    name='RPDB',
+    name='RP-DataBase',
     version='1.0.1',
     packages=[''],
     url='https://github.com/hsn8086/RPDB',
