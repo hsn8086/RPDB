@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='RP-DataBase',
-    version='1.0.1',
+    version='1.1.0',
     packages=['RPDB'],
     url='https://github.com/hsn8086/RPDB',
     license='MIT license',

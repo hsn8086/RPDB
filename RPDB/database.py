@@ -3,6 +3,7 @@ import hashlib
 import json
 import os.path
 import pickle
+import random
 import threading
 from time import sleep
 
@@ -180,9 +181,125 @@ class RPDB:
             self.db.dump()
 
 
+class FRPDB:
+    def __init__(self, path: str = 'data'):
+        self.already_dump = False
+        self.path = path
+        self.set_list = []
+        self.lock = threading.Lock()
+        self.lock_with = threading.Lock()
+        if not os.path.exists(os.path.join(self.path, 'meta.json')) and os.path.exists(
+                os.path.join(self.path, 'slices')):
+            import shutil
+            rd_dir_name = f'temp-{random.randint(0, 1000)}'
+            shutil.move(self.path, rd_dir_name)
+            ntf(rd_dir_name, self.path)
+            shutil.rmtree(rd_dir_name)
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        if os.path.exists(os.path.join(self.path, 'all.keys')):
+            self.keys = set(json.load(open(os.path.join(self.path, 'all.keys'), 'r', encoding='utf8'))['keys'])
+        else:
+            self.keys = set([])
+
+        if os.path.exists(os.path.join(self.path, 'meta.json')):
+            self.meta = json.load(open(os.path.join(self.path, 'meta.json'), 'r', encoding='utf8'))
+        else:
+            self.meta = {'version': 'F_RPDB-1'}
+
+        if not os.path.exists(os.path.join(self.path, 'slices')):
+            os.makedirs(os.path.join(self.path, 'slices'))
+
+    @staticmethod
+    def get_key_hash(key):
+        return hashlib.sha1(key.encode('utf8')).hexdigest()
+
+    def set(self, key, value):
+        self.lock.acquire()
+        self.keys.add(key)
+
+        with open(os.path.join(self.path, 'slices', self.get_key_hash(key)), 'wb') as f:
+            f.write(pickle.dumps(value))
+        self.lock.release()
+
+    def get(self, key):
+
+        if key in self.keys:
+            with open(os.path.join(self.path, 'slices', self.get_key_hash(key)), 'rb') as f:
+                return pickle.loads(f.read())
+        else:
+            return None
+
+    def exists(self, key):
+        return key in self.keys
+
+    def rem(self, key):
+        self.lock.acquire()
+        if os.path.exists(os.path.join(self.path, 'slices', self.get_key_hash(key))):
+            os.remove(os.path.join(self.path, 'slices', self.get_key_hash(key)))
+
+            self.keys.remove(key)
+        self.lock.release()
+
+    def close(self):
+        self.lock.acquire()
+        self.already_dump = True
+        with open(os.path.join(self.path, 'all.keys'), 'w', encoding='utf8') as f:
+            json.dump({'keys': list(self.keys)}, f)
+        with open(os.path.join(self.path, 'meta.json'), 'w', encoding='utf8') as f:
+            json.dump(self.meta, f)
+        self.lock.release()
+
+    def __del__(self):
+        if not self.already_dump:
+            self.close()
+
+    def enter(self, key):
+        return self._with_get(self, key)
+
+    class _with_get:
+        def __init__(self, db, key):
+            self.lock_with = db.lock_with
+            self.db = db
+            self.key = key
+
+        class V:
+            def __init__(self, v=None):
+                self.value = v
+
+        def __enter__(self):
+            self.lock_with.acquire()
+            self.v = self.V()
+            if not self.db.exists(self.key):
+                return self.v
+            else:
+                self.v.value = self.db.get(self.key)
+                return self.v
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if self.v.value is not None:
+                self.db.set(self.key, self.v.value)
+            elif self.db.exists(self.key):
+                self.db.rem(self.key)
+
+            self.lock_with.release()
+            self.db.dump()
+
+
 def otn(path, new_path, slice_multiplier=1):
     old_db = OldRPDB(path)
     new_db = RPDB(new_path, slice_multiplier=slice_multiplier)
     for key in old_db.getall():
+        new_db.set(key, old_db.get(key))
+    new_db.close()
+
+
+def ntf(path, new_path, slice_multiplier=1):
+    old_db = RPDB(path, slice_multiplier=slice_multiplier)
+    new_db = FRPDB(new_path)
+
+    for key in old_db.keys:
         new_db.set(key, old_db.get(key))
     new_db.close()
