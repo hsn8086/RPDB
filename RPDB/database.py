@@ -244,8 +244,11 @@ class FRPDB:
         self.lock.release()
 
     def close(self):
-        self.lock.acquire()
         self.already_dump = True
+        self.dump()
+
+    def dump(self):
+        self.lock.acquire()
         with open(os.path.join(self.path, 'all.keys'), 'w', encoding='utf8') as f:
             json.dump({'keys': list(self.keys)}, f)
         with open(os.path.join(self.path, 'meta.json'), 'w', encoding='utf8') as f:
