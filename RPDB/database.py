@@ -182,8 +182,9 @@ class RPDB:
 
 
 class FRPDB:
-    def __init__(self, path: str = 'data'):
+    def __init__(self, path: str = 'data', auto_dump=True):
         self.already_dump = False
+        self.auto_dump = auto_dump
         self.path = path
         self.set_list = []
         self.lock = threading.Lock()
@@ -211,6 +212,15 @@ class FRPDB:
 
         if not os.path.exists(os.path.join(self.path, 'slices')):
             os.makedirs(os.path.join(self.path, 'slices'))
+
+        if auto_dump:
+            def auto_dump_thread():
+                while True:
+                    self.dump()
+                    sleep(3)
+
+            t = threading.Thread(target=auto_dump_thread)
+            t.start()
 
     @staticmethod
     def get_key_hash(key):
